@@ -1,13 +1,7 @@
 // src/screens/dashboard/DashboardHome.tsx
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { supabase } from "../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -20,11 +14,7 @@ type CardProps = {
 
 function DashCard({ icon, title, subtitle, onPress }: CardProps) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.9}
-      style={styles.card}
-    >
+    <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={styles.card}>
       <View style={styles.cardIconWrap}>
         <Ionicons name={icon} size={24} color="#2563EB" />
       </View>
@@ -37,12 +27,10 @@ function DashCard({ icon, title, subtitle, onPress }: CardProps) {
   );
 }
 
-export default function DashboardHome() {
+export default function DashboardHome({ navigation }: any) {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert("Sign out failed", error.message);
-    }
+    if (error) Alert.alert("Sign out failed", error.message);
   };
 
   return (
@@ -52,16 +40,16 @@ export default function DashboardHome() {
 
         <View style={{ gap: 12 }}>
           <DashCard
+            icon="briefcase-outline"
+            title="My Businesses"
+            subtitle="Manage your listings"
+            onPress={() => navigation.navigate("MyBusinesses")}
+          />
+          <DashCard
             icon="add-circle-outline"
             title="Add a Business"
             subtitle="Create a new listing"
             onPress={() => Alert.alert("TODO", "Hook up Add Business screen")}
-          />
-          <DashCard
-            icon="briefcase-outline"
-            title="My Businesses"
-            subtitle="Manage your listings"
-            onPress={() => Alert.alert("TODO", "Hook up My Businesses screen")}
           />
           <DashCard
             icon="pricetag-outline"
