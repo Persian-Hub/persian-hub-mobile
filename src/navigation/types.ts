@@ -6,5 +6,5 @@ export type HomeStackParamList = {
 
 export type BottomTabParamList = {
   HomeTab: undefined;
-  Account: undefined;
+  DashboardTab: undefined;
 };

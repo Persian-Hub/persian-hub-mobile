@@ -7,7 +7,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 
 import HomeStackNavigator from "./src/navigation/HomeStackNavigator";
-import AuthStackNavigator from "./src/navigation/AuthStackNavigator";
+import DashboardGate from "./src/navigation/DashboardGate";
 import { BottomTabParamList } from "./src/navigation/types";
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
@@ -35,7 +35,7 @@ export default function App() {
                 const iconName =
                   route.name === "HomeTab"
                     ? ("home-outline" as const)
-                    : ("person-circle-outline" as const);
+                    : ("grid-outline" as const);
                 return <Ionicons name={iconName} size={size} color={color} />;
               },
               tabBarLabelStyle: { fontSize: 12, fontWeight: "700" },
@@ -47,9 +47,9 @@ export default function App() {
               options={{ title: "Home" }}
             />
             <Tab.Screen
-              name="Account"
-              component={AuthStackNavigator}
-              options={{ title: "Account" }}
+              name="DashboardTab"
+              component={DashboardGate}
+              options={{ title: "Dashboard" }}
             />
           </Tab.Navigator>
         </NavigationContainer>
