@@ -3,12 +3,9 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomTabParamList } from "./types";
 import HomeStackNavigator from "./HomeStackNavigator";
+import AuthScreen from "../screens/AuthScreen";
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
-
-function Placeholder() {
-  return null;
-}
 
 export default function BottomTabsNavigator() {
   return (
@@ -32,13 +29,16 @@ export default function BottomTabsNavigator() {
         },
       })}
     >
-      {/* Home tab hosts its own stack, so tabs stay visible on detail */}
       <Tab.Screen
         name="HomeTab"
         component={HomeStackNavigator}
         options={{ title: "Home" }}
       />
-      <Tab.Screen name="Profile" component={Placeholder} />
+      <Tab.Screen
+        name="Profile"
+        component={AuthScreen}
+        options={{ title: "Profile" }}
+      />
     </Tab.Navigator>
   );
 }
