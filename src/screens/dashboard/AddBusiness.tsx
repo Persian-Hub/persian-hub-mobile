@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+// src/screens/dashboard/AddBusiness.tsx
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,9 +17,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
 import { supabase } from "../../lib/supabase";
 import { uploadImageToStorage } from "../../utils/uploadToStorage";
+import {
+  placesAutocomplete,
+  placeDetails,
+  resetPlacesSession,
+} from "../../utils/places";
 
 type Category = { id: string; name: string; slug: string };
 type Subcategory = { id: string; name: string; slug: string; category_id: string };
@@ -41,15 +46,7 @@ const emptyHours: HoursState = {
 
 function toApiHours(h: HoursState) {
   const map: Record<string, string> = {};
-  const mapKey: Record<DayKey, string> = {
-    Mon: "mon",
-    Tue: "tue",
-    Wed: "wed",
-    Thu: "thu",
-    Fri: "fri",
-    Sat: "sat",
-    Sun: "sun",
-  };
+  const mapKey: Record<DayKey, string> = { Mon: "mon", Tue: "tue", Wed: "wed", Thu: "thu", Fri: "fri", Sat: "sat", Sun: "sun" };
   DAY_KEYS.forEach((d) => {
     if (!h[d].open || !h[d].start || !h[d].end) map[mapKey[d]] = "Closed";
     else map[mapKey[d]] = `${h[d].start} - ${h[d].end}`;
@@ -57,7 +54,7 @@ function toApiHours(h: HoursState) {
   return map;
 }
 
-// 15-min steps
+// 15-minute steps
 const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, i) => {
   const h = String(Math.floor(i / 4)).padStart(2, "0");
   const m = String((i % 4) * 15).padStart(2, "0");
@@ -75,17 +72,25 @@ export default function AddBusiness() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
 
-  // Request new category/subcategory form
+  // Request new category/subcategory
   const [showCatRequest, setShowCatRequest] = useState(false);
   const [reqCategoryName, setReqCategoryName] = useState("");
   const [reqSubcategoryName, setReqSubcategoryName] = useState("");
   const [reqDescription, setReqDescription] = useState("");
   const [reqExamples, setReqExamples] = useState("");
 
-  // Contact & location
-  const [address, setAddress] = useState("");
+  // Address (Google Places)
+  const [address, setAddress] = useState(""); // final human address
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
+  const [addrQuery, setAddrQuery] = useState(""); // input text
+  const [addrLoading, setAddrLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState<Array<{ description: string; place_id: string }>>([]);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [coordsResolved, setCoordsResolved] = useState(false); // show confirmation UI
+  const debouncer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Contact
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
@@ -118,7 +123,6 @@ export default function AddBusiness() {
     const { data } = await supabase.from("subcategories").select("id,name,slug,category_id").order("name");
     if (Array.isArray(data)) setSubcategories(data as any);
   }, []);
-
   useEffect(() => {
     loadCats();
     loadSubcats();
@@ -131,6 +135,48 @@ export default function AddBusiness() {
     () => subcategories.filter((s) => s.category_id === categoryId),
     [subcategories, categoryId]
   );
+
+  // ---- Address autocomplete (debounced) ----
+  useEffect(() => {
+    if (debouncer.current) clearTimeout(debouncer.current);
+    if (!addrQuery || addrQuery.trim().length < 3) {
+      setSuggestions([]);
+      setSuggestOpen(false);
+      return;
+    }
+    debouncer.current = setTimeout(async () => {
+      try {
+        setAddrLoading(true);
+        const results = await placesAutocomplete(addrQuery /*, { country: "au" }*/);
+        setSuggestions(results);
+        setSuggestOpen(true);
+      } catch {
+        // ignore
+      } finally {
+        setAddrLoading(false);
+      }
+    }, 300);
+    return () => {
+      if (debouncer.current) clearTimeout(debouncer.current);
+    };
+  }, [addrQuery]);
+
+  const selectSuggestion = async (s: { description: string; place_id: string }) => {
+    try {
+      const d = await placeDetails(s.place_id);
+      setAddress(d.formatted_address);
+      setLat(d.lat);
+      setLng(d.lng);
+      setAddrQuery(d.formatted_address);
+      setSuggestOpen(false);
+      setSuggestions([]);
+      resetPlacesSession();
+      Keyboard.dismiss();
+      setCoordsResolved(true); // NEW: show confirmation strip
+    } catch (e: any) {
+      Alert.alert("Failed to get place", e?.message || "Try another address.");
+    }
+  };
 
   // Helpers
   const addChip = (draft: string, setDraft: (v: string) => void, setList: (fn: (prev: string[]) => string[]) => void) => {
@@ -160,16 +206,6 @@ export default function AddBusiness() {
     setImages((prev) => Array.from(new Set([...prev, ...uris])));
   };
 
-  const getLocation = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
-      const cur = await Location.getCurrentPositionAsync({});
-      setLat(cur.coords.latitude);
-      setLng(cur.coords.longitude);
-    } catch {}
-  };
-
   const openTimePicker = (day: DayKey, field: "start" | "end") => setPickerVisible({ day, field, show: true });
   const setDayOpen = (day: DayKey, open: boolean) => setHours((h) => ({ ...h, [day]: { ...h[day], open } }));
   const setDayTime = (day: DayKey, field: "start" | "end", value: string) =>
@@ -178,7 +214,8 @@ export default function AddBusiness() {
   // Validation
   const validate = (): string | null => {
     if (!name.trim()) return "Business name is required.";
-    if (!address.trim()) return "Address is required.";
+    if (!addrQuery.trim()) return "Please choose an address from suggestions.";
+    if (lat == null || lng == null) return "Could not resolve coordinates for the selected address.";
     if (!categoryId && !showCatRequest) return "Select a category or request a new one.";
     if (showCatRequest) {
       if (!reqCategoryName.trim()) return "Proposed category name is required.";
@@ -204,13 +241,16 @@ export default function AddBusiness() {
       const payload = {
         owner_id: user.id,
         name: name.trim(),
-        slug: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now().toString(36),
+        slug:
+          name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-") +
+          "-" +
+          Date.now().toString(36),
         description: description.trim() || null,
         category_id: showCatRequest ? null : categoryId,
         subcategory_id: showCatRequest ? null : subcategoryId,
-        address: address.trim(),
-        latitude: lat != null ? Number(lat) : null,
-        longitude: lng != null ? Number(lng) : null,
+        address: address.trim() || addrQuery.trim(),
+        latitude: Number(lat),
+        longitude: Number(lng),
         phone: phone.trim() || null,
         email: email.trim() || null,
         website: website.trim() || null,
@@ -242,8 +282,7 @@ export default function AddBusiness() {
           business_id: bizId,
           status: "pending" as const,
         };
-        const { error: reqErr } = await supabase.from("category_requests").insert(reqPayload);
-        if (reqErr) console.warn("Category request error:", reqErr.message);
+        await supabase.from("category_requests").insert(reqPayload);
       }
 
       // 3) Upload images
@@ -260,13 +299,10 @@ export default function AddBusiness() {
             upsert: false,
           });
           uploaded.push(url);
-        } catch (e: any) {
-          console.warn("Upload error:", e?.message);
-        }
+        } catch {}
       }
       if (uploaded.length) {
-        const { error: upd } = await supabase.from("businesses").update({ images: uploaded }).eq("id", bizId);
-        if (upd) throw upd;
+        await supabase.from("businesses").update({ images: uploaded }).eq("id", bizId);
       }
 
       Alert.alert(
@@ -287,6 +323,7 @@ export default function AddBusiness() {
       setReqDescription("");
       setReqExamples("");
       setAddress("");
+      setAddrQuery("");
       setLat(null);
       setLng(null);
       setPhone("");
@@ -296,6 +333,8 @@ export default function AddBusiness() {
       setOwnerKeywords([]);
       setImages([]);
       setHours(emptyHours);
+      setCoordsResolved(false);
+      resetPlacesSession();
     } catch (e: any) {
       Alert.alert("Could not save", e?.message || "Please try again.");
     } finally {
@@ -416,37 +455,58 @@ export default function AddBusiness() {
           {/* Contact & location */}
           <Section title="Contact & location" subtitle="How customers can reach you.">
             <Field label="Address *">
-              <TextInput value={address} onChangeText={setAddress} placeholder="Street, city, state" style={styles.input} />
+              <View style={{ position: "relative" }}>
+                <TextInput
+                  value={addrQuery}
+                  onChangeText={(t) => {
+                    setAddrQuery(t);
+                    setCoordsResolved(false);
+                  }}
+                  placeholder="Search address (powered by Google)"
+                  style={[styles.input, coordsResolved && styles.inputSuccess]}
+                  onFocus={() => {
+                    if (addrQuery.length >= 3 && suggestions.length > 0) setSuggestOpen(true);
+                  }}
+                />
+                {coordsResolved && (
+                  <Text style={styles.inputCheck}>✓</Text>
+                )}
+
+                {/* Floating suggestions (NOT a FlatList to avoid nested VirtualizedList) */}
+                {suggestOpen && (
+                  <View style={styles.suggestBox}>
+                    {addrLoading ? (
+                      <Text style={styles.suggestHint}>Searching…</Text>
+                    ) : suggestions.length === 0 ? (
+                      <Text style={styles.suggestHint}>No suggestions</Text>
+                    ) : (
+                      <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 220 }}>
+                        {suggestions.map((item) => (
+                          <TouchableOpacity
+                            key={item.place_id}
+                            style={styles.suggestItem}
+                            onPress={() => selectSuggestion(item)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.suggestText}>{item.description}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              {/* Confirmation strip */}
+              {coordsResolved && lat != null && lng != null && (
+                <View style={{ marginTop: 6 }}>
+                  <Text style={styles.coordsHint}>✓ Location coordinates available</Text>
+                  <View style={styles.coordsCard}>
+                    <Text style={styles.coordsText}>✓ Coordinates: {lat}, {lng}</Text>
+                  </View>
+                </View>
+              )}
             </Field>
-
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <Field label="Latitude">
-                  <TextInput
-                    value={lat != null ? String(lat) : ""}
-                    onChangeText={(t) => setLat(t ? Number(t) : null)}
-                    placeholder="(-27.49...)"
-                    keyboardType="numeric"
-                    style={styles.input}
-                  />
-                </Field>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Field label="Longitude">
-                  <TextInput
-                    value={lng != null ? String(lng) : ""}
-                    onChangeText={(t) => setLng(t ? Number(t) : null)}
-                    placeholder="(153.03...)"
-                    keyboardType="numeric"
-                    style={styles.input}
-                  />
-                </Field>
-              </View>
-            </View>
-
-            <TouchableOpacity onPress={getLocation} style={styles.ghostBtn} activeOpacity={0.9}>
-              <Text style={styles.ghostBtnText}>Use current location</Text>
-            </TouchableOpacity>
 
             <Field label="Phone">
               <TextInput value={phone} onChangeText={setPhone} placeholder="+61..." style={styles.input} />
@@ -533,7 +593,6 @@ export default function AddBusiness() {
                 spellings, brand names, and common terms related to your services.
               </Text>
             </View>
-
           </Section>
 
           {/* Photos */}
@@ -761,17 +820,19 @@ function PickerModal<T>({
           </TouchableOpacity>
         ) : null}
 
-        <FlatList
-          data={data}
-          keyExtractor={(it) => keyExtractor(it)}
-          ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#f1f5f9" }} />}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => onSelect(item)} style={styles.modalItem}>
+        {/* simple scroll to avoid nested VirtualizedList issues */}
+        <ScrollView style={{ maxHeight: 320 }}>
+          {data.map((item) => (
+            <TouchableOpacity
+              key={keyExtractor(item)}
+              onPress={() => onSelect(item)}
+              style={styles.modalItem}
+            >
               <Text style={styles.modalItemText}>{labelExtractor(item)}</Text>
             </TouchableOpacity>
-          )}
-          style={{ maxHeight: 320 }}
-        />
+          ))}
+        </ScrollView>
+
         <TouchableOpacity onPress={onClose} style={styles.modalClose}>
           <Text style={styles.modalCloseText}>Close</Text>
         </TouchableOpacity>
@@ -799,18 +860,18 @@ function TimePickerModal({
       <Pressable style={styles.modalBackdrop} onPress={onClose} />
       <View style={styles.modalSheet}>
         <Text style={styles.modalTitle}>Choose time</Text>
-        <FlatList
-          data={options}
-          initialScrollIndex={initialIndex}
-          getItemLayout={(_, index) => ({ length: 48, offset: 48 * index, index })}
-          keyExtractor={(it) => it}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => onSelect(item)} style={styles.modalItem}>
-              <Text style={styles.modalItemText}>{item}</Text>
+        {/* simple scroll */}
+        <ScrollView style={{ maxHeight: 360 }}>
+          {options.map((opt, idx) => (
+            <TouchableOpacity
+              key={opt}
+              onPress={() => onSelect(opt)}
+              style={[styles.modalItem, idx === initialIndex && { backgroundColor: "#f8fafc" }]}
+            >
+              <Text style={styles.modalItemText}>{opt}</Text>
             </TouchableOpacity>
-          )}
-          style={{ maxHeight: 360 }}
-        />
+          ))}
+        </ScrollView>
         <TouchableOpacity onPress={onClose} style={styles.modalClose}>
           <Text style={styles.modalCloseText}>Cancel</Text>
         </TouchableOpacity>
@@ -849,6 +910,9 @@ const styles = StyleSheet.create({
   },
   hint: { color: "#6b7280", marginTop: 6 },
 
+  inputSuccess: { borderColor: "#16a34a" },
+  inputCheck: { position: "absolute", right: 12, top: 14, color: "#16a34a", fontSize: 16 },
+
   select: {
     borderWidth: 1,
     borderColor: "#e6eaf0",
@@ -863,7 +927,6 @@ const styles = StyleSheet.create({
   selectText: { color: "#111827" },
   chev: { color: "#9ca3af", fontSize: 16 },
 
-  // Request card
   requestCard: {
     marginTop: 12,
     backgroundColor: "#f3f6ff",
@@ -886,17 +949,25 @@ const styles = StyleSheet.create({
   },
   reqHint: { color: "#475569", marginTop: 6 },
 
-  ghostBtn: {
-    alignSelf: "flex-start",
-    backgroundColor: "#f3f4f6",
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+  // Suggestions dropdown
+  suggestBox: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 52, // under the input
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
-    marginBottom: 8,
+    borderColor: "#e6eaf0",
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    zIndex: 10,
   },
-  ghostBtnText: { color: "#111827", fontWeight: "700" },
+  suggestItem: { paddingHorizontal: 12, paddingVertical: 12 },
+  suggestText: { color: "#111827" },
+  suggestHint: { color: "#6b7280", paddingHorizontal: 12, paddingVertical: 12 },
 
   chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
   chip: {
@@ -1045,6 +1116,8 @@ const styles = StyleSheet.create({
   },
   extraRowIcon: { color: "#2563eb", fontSize: 18, fontWeight: "900", marginRight: 8 },
   extraRowText: { color: "#2563eb", fontWeight: "800", fontSize: 15 },
+
+  // Info card under Owner Keywords
   infoBox: {
     marginTop: 10,
     borderRadius: 12,
@@ -1053,13 +1126,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#dbe7ff",
   },
-  infoTitle: {
-    fontWeight: "900",
-    color: "#1e3a8a",
-    marginBottom: 6,
+  infoTitle: { fontWeight: "900", color: "#1e3a8a", marginBottom: 6 },
+  infoText: { color: "#334155", lineHeight: 20 },
+
+  // Coordinates confirmation styles
+  coordsHint: { color: "#059669", fontWeight: "700" },
+  coordsCard: {
+    marginTop: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "#ecfdf5",
+    borderWidth: 1,
+    borderColor: "#a7f3d0",
+    borderRadius: 10,
   },
-  infoText: {
-    color: "#334155",
-    lineHeight: 20,
-  },
+  coordsText: { color: "#065f46", fontWeight: "800" },
 });
