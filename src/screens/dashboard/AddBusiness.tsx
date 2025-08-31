@@ -25,6 +25,8 @@ import {
   resetPlacesSession,
 } from "../../utils/places";
 
+/* ---------------- Types ---------------- */
+
 type Category = { id: string; name: string; slug: string };
 type Subcategory = { id: string; name: string; slug: string; category_id: string };
 
@@ -33,6 +35,8 @@ type DayKey = (typeof DAY_KEYS)[number];
 
 type DayState = { open: boolean; start: string | null; end: string | null };
 type HoursState = Record<DayKey, DayState>;
+
+/* ---------------- Helpers / constants ---------------- */
 
 const emptyHours: HoursState = {
   Mon: { open: false, start: "09:00", end: "17:00" },
@@ -61,6 +65,37 @@ const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, i) => {
   return `${h}:${m}`;
 });
 
+/** Country code list (trim/expand as you like) */
+const COUNTRY_CODES = [
+  { code: "+61", label: "Australia (+61)" },
+  { code: "+1", label: "USA / Canada (+1)" },
+  { code: "+44", label: "United Kingdom (+44)" },
+  { code: "+64", label: "New Zealand (+64)" },
+  { code: "+49", label: "Germany (+49)" },
+  { code: "+33", label: "France (+33)" },
+  { code: "+98", label: "Iran (+98)" },
+];
+
+/** validators */
+const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+const normalizeUrl = (v: string) => {
+  if (!v) return "";
+  if (/^https?:\/\//i.test(v)) return v;
+  return `https://${v}`;
+};
+const isHttpUrl = (v: string) => {
+  try {
+    const u = new URL(normalizeUrl(v));
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+/** very light E.164-ish: + + 4..14 digits total after spaces removed */
+const isValidE164 = (full: string) => /^\+\d{5,15}$/.test(full.replace(/\s+/g, ""));
+
+/* ---------------- Component ---------------- */
+
 export default function AddBusiness() {
   const [loading, setLoading] = useState(false);
 
@@ -87,13 +122,15 @@ export default function AddBusiness() {
   const [addrLoading, setAddrLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<Array<{ description: string; place_id: string }>>([]);
   const [suggestOpen, setSuggestOpen] = useState(false);
-  const [coordsResolved, setCoordsResolved] = useState(false); // show confirmation UI
+  const [coordsResolved, setCoordsResolved] = useState(false); // confirmation UI
   const debouncer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Contact
-  const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState(COUNTRY_CODES[0].code);
+  const [phoneLocal, setPhoneLocal] = useState("");
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
+  const [errors, setErrors] = useState<{ phone?: string; email?: string; website?: string }>({});
 
   // Services / keywords
   const [services, setServices] = useState<string[]>([]);
@@ -113,16 +150,28 @@ export default function AddBusiness() {
   // Dropdown modals
   const [catModal, setCatModal] = useState(false);
   const [subcatModal, setSubcatModal] = useState(false);
+  const [codeModal, setCodeModal] = useState(false);
 
-  // Load options
+  /* ---------------- Load options ---------------- */
+
   const loadCats = useCallback(async () => {
-    const { data } = await supabase.from("categories").select("id,name,slug").order("name");
+    const { data, error } = await supabase.from("categories").select("id,name,slug").order("name");
+    if (error) {
+      console.warn("Categories load error:", error.message);
+      return;
+    }
     if (Array.isArray(data)) setCategories(data as Category[]);
   }, []);
+
   const loadSubcats = useCallback(async () => {
-    const { data } = await supabase.from("subcategories").select("id,name,slug,category_id").order("name");
+    const { data, error } = await supabase.from("subcategories").select("id,name,slug,category_id").order("name");
+    if (error) {
+      console.warn("Subcategories load error:", error.message);
+      return;
+    }
     if (Array.isArray(data)) setSubcategories(data as any);
   }, []);
+
   useEffect(() => {
     loadCats();
     loadSubcats();
@@ -136,7 +185,8 @@ export default function AddBusiness() {
     [subcategories, categoryId]
   );
 
-  // ---- Address autocomplete (debounced) ----
+  /* ---------------- Address autocomplete (debounced) ---------------- */
+
   useEffect(() => {
     if (debouncer.current) clearTimeout(debouncer.current);
     if (!addrQuery || addrQuery.trim().length < 3) {
@@ -150,8 +200,8 @@ export default function AddBusiness() {
         const results = await placesAutocomplete(addrQuery /*, { country: "au" }*/);
         setSuggestions(results);
         setSuggestOpen(true);
-      } catch {
-        // ignore
+      } catch (e: any) {
+        console.warn("placesAutocomplete error:", e?.message);
       } finally {
         setAddrLoading(false);
       }
@@ -172,13 +222,14 @@ export default function AddBusiness() {
       setSuggestions([]);
       resetPlacesSession();
       Keyboard.dismiss();
-      setCoordsResolved(true); // NEW: show confirmation strip
+      setCoordsResolved(true);
     } catch (e: any) {
       Alert.alert("Failed to get place", e?.message || "Try another address.");
     }
   };
 
-  // Helpers
+  /* ---------------- Chip helpers ---------------- */
+
   const addChip = (draft: string, setDraft: (v: string) => void, setList: (fn: (prev: string[]) => string[]) => void) => {
     const v = draft.trim();
     if (!v) return;
@@ -188,6 +239,8 @@ export default function AddBusiness() {
   const removeChip = (value: string, setList: (fn: (prev: string[]) => string[]) => void) => {
     setList((prev) => prev.filter((x) => x !== value));
   };
+
+  /* ---------------- Media picker ---------------- */
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -206,16 +259,56 @@ export default function AddBusiness() {
     setImages((prev) => Array.from(new Set([...prev, ...uris])));
   };
 
+  /* ---------------- Hours helpers ---------------- */
+
   const openTimePicker = (day: DayKey, field: "start" | "end") => setPickerVisible({ day, field, show: true });
   const setDayOpen = (day: DayKey, open: boolean) => setHours((h) => ({ ...h, [day]: { ...h[day], open } }));
   const setDayTime = (day: DayKey, field: "start" | "end", value: string) =>
     setHours((h) => ({ ...h, [day]: { ...h[day], [field]: value } }));
 
-  // Validation
+  /* ---------------- Live validation ---------------- */
+
+  // phone: local only digits
+  useEffect(() => {
+    const local = phoneLocal.replace(/[^\d]/g, "");
+    if (phoneLocal !== local) setPhoneLocal(local);
+
+    const full = `${countryCode}${local}`;
+    if (!local) setErrors((e) => ({ ...e, phone: "Phone number is required." }));
+    else if (!isValidE164(full)) setErrors((e) => ({ ...e, phone: "Enter a valid phone number (numbers only)." }));
+    else setErrors((e) => ({ ...e, phone: undefined }));
+  }, [countryCode, phoneLocal]);
+
+  useEffect(() => {
+    if (!email) {
+      setErrors((e) => ({ ...e, email: undefined })); // optional; make it required if you want
+      return;
+    }
+    setErrors((e) => ({ ...e, email: isEmail(email) ? undefined : "Invalid email format." }));
+  }, [email]);
+
+  useEffect(() => {
+    if (!website) {
+      setErrors((e) => ({ ...e, website: undefined }));
+      return;
+    }
+    setErrors((e) => ({ ...e, website: isHttpUrl(website) ? undefined : "Enter a valid URL (with or without https://)." }));
+  }, [website]);
+
+  /* ---------------- Submit-time validation ---------------- */
+
   const validate = (): string | null => {
     if (!name.trim()) return "Business name is required.";
     if (!addrQuery.trim()) return "Please choose an address from suggestions.";
     if (lat == null || lng == null) return "Could not resolve coordinates for the selected address.";
+
+    // Phone mandatory
+    const phoneFull = `${countryCode}${phoneLocal}`;
+    if (!phoneLocal || !isValidE164(phoneFull)) return "Please enter a valid phone number.";
+
+    if (email && !isEmail(email)) return "Email format looks invalid.";
+    if (website && !isHttpUrl(website)) return "Website looks invalid.";
+
     if (!categoryId && !showCatRequest) return "Select a category or request a new one.";
     if (showCatRequest) {
       if (!reqCategoryName.trim()) return "Proposed category name is required.";
@@ -225,7 +318,8 @@ export default function AddBusiness() {
     return null;
   };
 
-  // Save
+  /* ---------------- Save ---------------- */
+
   const onSave = async () => {
     const err = validate();
     if (err) {
@@ -234,26 +328,27 @@ export default function AddBusiness() {
     }
     setLoading(true);
     try {
-      const user = (await supabase.auth.getUser()).data.user;
+      const userRes = await supabase.auth.getUser();
+      const user = userRes.data.user;
       if (!user) throw new Error("You need to be logged in.");
+
+      const phoneFull = `${countryCode}${phoneLocal}`;
+      const websiteNormalized = website ? normalizeUrl(website) : null;
 
       // 1) Create business
       const payload = {
         owner_id: user.id,
         name: name.trim(),
-        slug:
-          name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-") +
-          "-" +
-          Date.now().toString(36),
+        slug: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now().toString(36),
         description: description.trim() || null,
         category_id: showCatRequest ? null : categoryId,
         subcategory_id: showCatRequest ? null : subcategoryId,
         address: address.trim() || addrQuery.trim(),
         latitude: Number(lat),
         longitude: Number(lng),
-        phone: phone.trim() || null,
+        phone: phoneFull,
         email: email.trim() || null,
-        website: website.trim() || null,
+        website: websiteNormalized,
         opening_hours: toApiHours(hours),
         images: [],
         services: services.length ? services : null,
@@ -263,15 +358,11 @@ export default function AddBusiness() {
         is_sponsored: false,
       };
 
-      const { data: created, error: ce } = await supabase
-        .from("businesses")
-        .insert(payload)
-        .select("id")
-        .single();
+      const { data: created, error: ce } = await supabase.from("businesses").insert(payload).select("id").single();
       if (ce) throw ce;
       const bizId: string = created!.id;
 
-      // 2) Category request (optional)
+      // 2) Optional category request
       if (showCatRequest) {
         const reqPayload = {
           proposed_category_name: reqCategoryName.trim(),
@@ -282,10 +373,11 @@ export default function AddBusiness() {
           business_id: bizId,
           status: "pending" as const,
         };
-        await supabase.from("category_requests").insert(reqPayload);
+        const { error: re } = await supabase.from("category_requests").insert(reqPayload);
+        if (re) console.warn("category_requests insert error:", re.message);
       }
 
-      // 3) Upload images
+      // 3) Upload images (best-effort)
       const uploaded: string[] = [];
       for (const uri of images) {
         const ext = uri.split("?")[0].split("#")[0].split(".").pop() || "jpg";
@@ -299,10 +391,13 @@ export default function AddBusiness() {
             upsert: false,
           });
           uploaded.push(url);
-        } catch {}
+        } catch (e: any) {
+          console.warn("upload error:", e?.message);
+        }
       }
       if (uploaded.length) {
-        await supabase.from("businesses").update({ images: uploaded }).eq("id", bizId);
+        const { error: upd } = await supabase.from("businesses").update({ images: uploaded }).eq("id", bizId);
+        if (upd) console.warn("update images error:", upd.message);
       }
 
       Alert.alert(
@@ -326,7 +421,8 @@ export default function AddBusiness() {
       setAddrQuery("");
       setLat(null);
       setLng(null);
-      setPhone("");
+      setCountryCode(COUNTRY_CODES[0].code);
+      setPhoneLocal("");
       setEmail("");
       setWebsite("");
       setServices([]);
@@ -341,6 +437,8 @@ export default function AddBusiness() {
       setLoading(false);
     }
   };
+
+  /* ---------------- UI ---------------- */
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f7f8fb" }} edges={["top"]}>
@@ -468,11 +566,9 @@ export default function AddBusiness() {
                     if (addrQuery.length >= 3 && suggestions.length > 0) setSuggestOpen(true);
                   }}
                 />
-                {coordsResolved && (
-                  <Text style={styles.inputCheck}>✓</Text>
-                )}
+                {coordsResolved && <Text style={styles.inputCheck}>✓</Text>}
 
-                {/* Floating suggestions (NOT a FlatList to avoid nested VirtualizedList) */}
+                {/* Floating suggestions */}
                 {suggestOpen && (
                   <View style={styles.suggestBox}>
                     {addrLoading ? (
@@ -508,8 +604,22 @@ export default function AddBusiness() {
               )}
             </Field>
 
-            <Field label="Phone">
-              <TextInput value={phone} onChangeText={setPhone} placeholder="+61..." style={styles.input} />
+            {/* PHONE (required) */}
+            <Field label="Phone *">
+              <View style={styles.phoneRow}>
+                <TouchableOpacity style={styles.codeBtn} onPress={() => setCodeModal(true)} activeOpacity={0.9}>
+                  <Text style={styles.codeText}>{countryCode}</Text>
+                  <Text style={styles.chev}>▾</Text>
+                </TouchableOpacity>
+                <TextInput
+                  value={phoneLocal}
+                  onChangeText={setPhoneLocal}
+                  placeholder="e.g. 433531131"
+                  keyboardType="number-pad"
+                  style={[styles.input, { flex: 1 }, errors.phone && styles.inputError]}
+                />
+              </View>
+              {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
             </Field>
 
             <Field label="Email">
@@ -517,20 +627,22 @@ export default function AddBusiness() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="hello@example.com"
-                style={styles.input}
+                style={[styles.input, errors.email && styles.inputError]}
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
+              {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
             </Field>
 
             <Field label="Website">
               <TextInput
                 value={website}
                 onChangeText={setWebsite}
-                placeholder="example.com"
-                style={styles.input}
+                placeholder="example.com or https://example.com"
+                style={[styles.input, errors.website && styles.inputError]}
                 autoCapitalize="none"
               />
+              {errors.website ? <Text style={styles.errorText}>{errors.website}</Text> : null}
             </Field>
           </Section>
 
@@ -673,6 +785,20 @@ export default function AddBusiness() {
         }}
       />
 
+      {/* Country code modal */}
+      <PickerModal
+        visible={codeModal}
+        title="Select country code"
+        data={COUNTRY_CODES}
+        keyExtractor={(it) => it.code}
+        labelExtractor={(it) => it.label}
+        onClose={() => setCodeModal(false)}
+        onSelect={(c) => {
+          setCountryCode(c.code);
+          setCodeModal(false);
+        }}
+      />
+
       {/* Time picker modal */}
       <TimePickerModal
         visible={pickerVisible.show}
@@ -688,7 +814,7 @@ export default function AddBusiness() {
   );
 }
 
-/* ---------- UI Bits ---------- */
+/* ---------------- UI Bits ---------------- */
 
 function Header() {
   return (
@@ -778,7 +904,7 @@ function ChipEditor({
   );
 }
 
-/** Picker modal with optional "Can't find it?" row **/
+/** Picker modal with optional "Can't find it?" row */
 function PickerModal<T>({
   visible,
   title,
@@ -880,7 +1006,7 @@ function TimePickerModal({
   );
 }
 
-/* ---------- Styles ---------- */
+/* ---------------- Styles ---------------- */
 
 const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: "900", color: "#0b0b0c" },
@@ -908,6 +1034,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#111827",
   },
+  inputError: { borderColor: "#ef4444" },
   hint: { color: "#6b7280", marginTop: 6 },
 
   inputSuccess: { borderColor: "#16a34a" },
@@ -926,6 +1053,22 @@ const styles = StyleSheet.create({
   },
   selectText: { color: "#111827" },
   chev: { color: "#9ca3af", fontSize: 16 },
+
+  // Phone
+  phoneRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  codeBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#e6eaf0",
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  codeText: { fontWeight: "800", color: "#111827" },
+  errorText: { color: "#ef4444", marginTop: 6, fontWeight: "700" },
 
   requestCard: {
     marginTop: 12,
