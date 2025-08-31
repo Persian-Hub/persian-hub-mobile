@@ -49,7 +49,7 @@ export default function DashboardHome({ navigation }: any) {
             icon="add-circle-outline"
             title="Add a Business"
             subtitle="Create a new listing"
-            onPress={() => Alert.alert("TODO", "Hook up Add Business screen")}
+            onPress={() => navigation.navigate("AddBusiness")}
           />
           <DashCard
             icon="pricetag-outline"

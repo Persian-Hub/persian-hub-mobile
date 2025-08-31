@@ -72,7 +72,7 @@ export default function MyBusinesses({ navigation }: any) {
   }, [load]);
 
   const goAddBusiness = () => {
-    Alert.alert("Coming soon", "Add Business screen will be wired next.");
+      navigation.navigate("AddBusiness");
   };
 
   const goEdit = (b: OwnedBusiness) => {
