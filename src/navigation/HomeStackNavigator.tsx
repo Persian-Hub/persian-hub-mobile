@@ -5,6 +5,7 @@ import { HomeStackParamList } from "./types";
 import HomeScreen from "../screens/HomeScreen";
 import BusinessDetail from "../screens/BusinessDetail";
 import ReviewForm from "../screens/ReviewForm";  
+import RequestVerificationScreen from "../screens/RequestVerificationScreen";
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 

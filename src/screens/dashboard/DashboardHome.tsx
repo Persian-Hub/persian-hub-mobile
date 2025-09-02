@@ -61,7 +61,7 @@ export default function DashboardHome({ navigation }: any) {
             icon="shield-checkmark-outline"
             title="Verification"
             subtitle="Request or track verification"
-            onPress={() => Alert.alert("TODO", "Hook up Verification screen")}
+            onPress={() => navigation.navigate("RequestVerificationList")}
           />
           <DashCard
             icon="settings-outline"
