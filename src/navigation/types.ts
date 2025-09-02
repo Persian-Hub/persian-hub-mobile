@@ -20,4 +20,5 @@ export type DashboardStackParamList = {
   AddBusiness: undefined;
   RequestVerificationList: undefined;
   RequestVerification: { preselectBusinessId?: string } | undefined;
+  EditBusiness: { businessId: string }; // <-- add this
 };
