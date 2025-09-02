@@ -67,7 +67,7 @@ export default function DashboardHome({ navigation }: any) {
             icon="settings-outline"
             title="Settings"
             subtitle="Profile & preferences"
-            onPress={() => Alert.alert("TODO", "Hook up Settings screen")}
+            onPress={() => navigation.navigate("ProfileSettings")}
           />
         </View>
 
