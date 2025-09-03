@@ -1,66 +1,90 @@
-// src/screens/dashboard/DashboardHome.tsx
 import React from "react";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
-import { supabase } from "../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { DashboardStackParamList } from "../../navigation/types";
+import { supabase } from "../../lib/supabase";
 
-type CardProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  subtitle?: string;
-  onPress?: () => void;
-};
+type Props = NativeStackScreenProps<DashboardStackParamList, "DashboardHome">;
 
-function DashCard({ icon, title, subtitle, onPress }: CardProps) {
-  return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={styles.card}>
-      <View style={styles.cardIconWrap}>
-        <Ionicons name={icon} size={24} color="#2563EB" />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.cardTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.cardSub}>{subtitle}</Text> : null}
-      </View>
-      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-    </TouchableOpacity>
-  );
-}
+export default function DashboardHome({ navigation }: Props) {
+  const [isAdmin, setIsAdmin] = React.useState(false);
+  const [fullName, setFullName] = React.useState<string | null>(null);
 
-export default function DashboardHome({ navigation }: any) {
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) Alert.alert("Sign out failed", error.message);
+  React.useEffect(() => {
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+      if (!user) return;
+
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("role, full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setIsAdmin(prof?.role === "admin");
+      setFullName(prof?.full_name ?? null);
+    })();
+  }, []);
+
+  const goAdmin = () => {
+    // If Admin stack is mounted inside this navigator:
+    try {
+      navigation.navigate("AdminHome" as never);
+      return;
+    } catch {
+      // If Admin stack is mounted at a parent/root level:
+      const parent = navigation.getParent();
+      if (parent) {
+        parent.navigate("AdminHome");
+      } else {
+        Alert.alert(
+          "Admin",
+          "Admin panel route is not mounted. Please add AdminStackNavigator to your app router."
+        );
+      }
+    }
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={styles.container}>
-        <Text style={styles.h1}>Your Dashboard</Text>
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: "#f7f8fb" }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+        <Text style={styles.title}>Dashboard</Text>
+        <Text style={styles.sub}>
+          {fullName ? `Welcome, ${fullName}` : "Manage your businesses and profile"}
+        </Text>
 
-        <View style={{ gap: 12 }}>
+        {/* My area */}
+        <Text style={styles.sectionTitle}>My tools</Text>
+        <View style={styles.grid}>
           <DashCard
-            icon="briefcase-outline"
+            icon="storefront-outline"
             title="My Businesses"
-            subtitle="Manage your listings"
+            subtitle="View & manage"
             onPress={() => navigation.navigate("MyBusinesses")}
           />
           <DashCard
             icon="add-circle-outline"
-            title="Add a Business"
-            subtitle="Create a new listing"
+            title="Add Business"
+            subtitle="Create a listing"
             onPress={() => navigation.navigate("AddBusiness")}
           />
+        </View>
+
+        <View style={styles.grid}>
           <DashCard
-            icon="pricetag-outline"
-            title="Promotions"
-            subtitle="Boost your visibility"
-            onPress={() => Alert.alert("TODO", "Hook up Promotions screen")}
-          />
-          <DashCard
-            icon="shield-checkmark-outline"
-            title="Verification"
-            subtitle="Request or track verification"
+            icon="ribbon-outline"
+            title="Request Verification"
+            subtitle="Verify a listing"
             onPress={() => navigation.navigate("RequestVerificationList")}
           />
           <DashCard
@@ -69,70 +93,102 @@ export default function DashboardHome({ navigation }: any) {
             subtitle="Profile & preferences"
             onPress={() => navigation.navigate("ProfileSettings")}
           />
-          <DashCard
-            icon="shield-checkmark-outline"
-            title="Support & Legal"
-            subtitle="Terms, privacy, contact & more"
-            onPress={() => navigation.navigate("SupportLegalHome")}
-          />
         </View>
 
-        <TouchableOpacity
-          onPress={signOut}
-          activeOpacity={0.9}
-          style={styles.signOutBtn}
-        >
-          <Ionicons name="log-out-outline" size={18} color="#DC2626" />
-          <Text style={styles.signOutText}>Sign out</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.grid}>
+          <DashCard
+            icon="help-circle-outline"
+            title="Support & Legal"
+            subtitle="Contact & policies"
+            onPress={() => navigation.navigate("SupportLegalHome")}
+          />
+          <View style={{ flex: 1 }} />
+        </View>
+
+        {/* Admin area (only visible to admins) */}
+        {isAdmin && (
+          <>
+            <Text style={styles.sectionTitle}>Admin</Text>
+            <View style={styles.grid}>
+              <DashCard
+                icon="speedometer-outline"
+                title="Admin Panel"
+                subtitle="Moderation & management"
+                highlight
+                onPress={() => navigation.navigate("AdminStack", { screen: "AdminHome" })}              />
+              <View style={{ flex: 1 }} />
+            </View>
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
+/* ------------ Local card component (compact, friendly) ------------ */
+
+function DashCard({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  highlight,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle?: string;
+  onPress?: () => void;
+  highlight?: boolean;
+}) {
+  const color = highlight ? "#2563eb" : "#111827";
+  const tintBg = `${color}12` as any;
+  const tintBorder = `${color}33` as any;
+
+  const body = (
+    <View style={styles.card}>
+      <View style={[styles.iconWrap, { backgroundColor: tintBg, borderColor: tintBorder }]}>
+        <Ionicons name={icon} size={22} color={color} />
+      </View>
+      <Text style={styles.cardTitle}>{title}</Text>
+      {subtitle ? <Text style={styles.cardSub}>{subtitle}</Text> : null}
+    </View>
+  );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={{ flex: 1 }}>
+        {body}
+      </TouchableOpacity>
+    );
+  }
+  return <View style={{ flex: 1 }}>{body}</View>;
+}
+
+/* ------------------------------- Styles ------------------------------- */
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f7f8fb" },
-  container: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
-  h1: { fontSize: 24, fontWeight: "900", color: "#0b0b0c", marginBottom: 12 },
+  title: { fontSize: 26, fontWeight: "900", color: "#0b0b0c" },
+  sub: { color: "#6b7280", marginTop: 6, marginBottom: 12 },
+
+  sectionTitle: { fontSize: 16, fontWeight: "900", color: "#0b0b0c", marginTop: 16, marginBottom: 10 },
+
+  grid: { flexDirection: "row", gap: 12, marginBottom: 12 },
 
   card: {
     backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#eef2f7",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    padding: 14,
   },
-  cardIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "#EFF6FF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardTitle: { color: "#111827", fontWeight: "800", fontSize: 15 },
-  cardSub: { color: "#6B7280", marginTop: 2 },
-
-  signOutBtn: {
-    marginTop: 20,
+  iconWrap: {
     alignSelf: "flex-start",
-    backgroundColor: "#FEF2F2",
-    borderColor: "#FEE2E2",
     borderWidth: 1,
-    paddingHorizontal: 12,
-    height: 42,
     borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 8,
   },
-  signOutText: { color: "#DC2626", fontWeight: "800" },
+  cardTitle: { color: "#111827", fontWeight: "900" },
+  cardSub: { color: "#6b7280", marginTop: 4 },
 });

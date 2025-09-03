@@ -16,6 +16,9 @@ import DataDeletionScreen from "../screens/support/DataDeletionScreen";
 import ChildSafetyScreen from "../screens/support/ChildSafetyScreen";
 import ContactUsScreen from "../screens/support/ContactUsScreen";
 import ReportIssueScreen from "../screens/support/ReportIssueScreen";
+import AdminHome from "../screens/admin/AdminHome"; // ⬅️ NEW
+import AdminStackNavigator from "./AdminStackNavigator";
+
 const Stack = createNativeStackNavigator<DashboardStackParamList>();
 
 export default function DashboardStackNavigator() {
@@ -37,6 +40,8 @@ export default function DashboardStackNavigator() {
       <Stack.Screen name="ChildSafety" component={ChildSafetyScreen} />
       <Stack.Screen name="ContactUs" component={ContactUsScreen} />
       <Stack.Screen name="ReportIssue" component={ReportIssueScreen} />
+      <Stack.Screen name="AdminStack" component={AdminStackNavigator} />
+
     </Stack.Navigator>
   );
 }

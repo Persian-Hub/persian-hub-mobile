@@ -1,9 +1,10 @@
 // src/navigation/types.ts
+import type { NavigatorScreenParams } from "@react-navigation/native";
 
 // Bottom tabs: Home + Dashboard
 export type BottomTabParamList = {
-  HomeTab: undefined;
-  DashboardTab: undefined;
+  HomeTab: NavigatorScreenParams<HomeStackParamList>;
+  DashboardTab: NavigatorScreenParams<DashboardStackParamList>;
 };
 
 // Home stack (browsing)
@@ -30,4 +31,24 @@ export type DashboardStackParamList = {
   ChildSafety: undefined;
   ContactUs: undefined;
   ReportIssue: { prefillSubject?: string } | undefined;
+  AdminStack: NavigatorScreenParams<AdminStackParamList>; // <— NESTED ADMIN
+
+};
+
+
+export type AdminStackParamList = {
+  // drill-down screens you can build next:
+  PendingBusinesses: undefined;
+  PendingReviews: undefined;
+  CategoryRequests: undefined;
+  VerificationRequests: undefined;
+  BusinessReports: undefined;
+
+  AllBusinesses: undefined;
+  Users: undefined;
+  AllReviews: undefined;
+  Categories: undefined;
+  Promotions: undefined;
+  AdminHome: undefined;
+
 };
