@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 import { HomeStackParamList } from "../navigation/types";
 import { supabase } from "../lib/supabase";
 
@@ -228,7 +229,7 @@ export default function BusinessDetail({ route, navigation }: Props) {
     const url = Platform.select({
       ios: `http://maps.apple.com/?daddr=${lat},${lng}&q=${label}`,
       android: `geo:0,0?q=${lat},${lng}(${label})`,
-      default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=`,
+      default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
     }) as string;
     Linking.openURL(url);
   };
@@ -241,8 +242,7 @@ export default function BusinessDetail({ route, navigation }: Props) {
   const goToLoginTab = () => {
     const parent = navigation.getParent();
     if (parent) {
-      // We intentionally cross to the bottom tab navigator here.
-      parent.navigate("DashboardTab");
+      parent.navigate("DashboardTab" as never);
     } else {
       Alert.alert("Login", "Open the Dashboard tab to log in.");
     }
@@ -262,8 +262,15 @@ export default function BusinessDetail({ route, navigation }: Props) {
       );
       return;
     }
-    // Properly typed navigate within Home stack:
     navigation.navigate("ReviewForm", {
+      businessId: id,
+      businessName: biz?.name ?? "Business",
+    });
+  }, [navigation, id, biz?.name]);
+
+  const onReport = useCallback(async () => {
+    // Allow open; the Report screen enforces sign-in on submit.
+    navigation.navigate("ReportBusiness", {
       businessId: id,
       businessName: biz?.name ?? "Business",
     });
@@ -297,7 +304,7 @@ export default function BusinessDetail({ route, navigation }: Props) {
           style={{ width: "100%", height: 220, backgroundColor: "#000" }}
         >
           {images.map((uri, i) => (
-            <TouchableOpacity key={uri} activeOpacity={0.9} onPress={() => openViewer(i)}>
+            <TouchableOpacity key={`${uri}-${i}`} activeOpacity={0.9} onPress={() => openViewer(i)}>
               <Image source={{ uri }} style={{ width: Dimensions.get("window").width, height: 220 }} />
             </TouchableOpacity>
           ))}
@@ -331,6 +338,7 @@ export default function BusinessDetail({ route, navigation }: Props) {
       <Section title="Status">
         <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <Badge color={status.open ? "#16a34a" : "#ef4444"} text={status.open ? "Open now" : "Closed"} />
+          {status.today ? <Badge color="#6b7280" text={`Today: ${status.today}`} /> : null}
           {status.next ? <Badge color="#2563eb" text={status.next} /> : null}
           {biz.is_verified ? <Badge color="#06b6d4" text="Verified ✓" /> : null}
           {biz.is_sponsored ? <Badge color="#f59e0b" text="Sponsored" /> : null}
@@ -343,8 +351,8 @@ export default function BusinessDetail({ route, navigation }: Props) {
           <Text style={{ color: "#374151", lineHeight: 20 }}>{biz.description}</Text>
           {!!biz.services?.length && (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-              {biz.services!.map((s) => (
-                <View key={s} style={styles.chip}>
+              {biz.services!.map((s, idx) => (
+                <View key={`${s}-${idx}`} style={styles.chip}>
                   <Text style={styles.chipText}>{s}</Text>
                 </View>
               ))}
@@ -404,6 +412,18 @@ export default function BusinessDetail({ route, navigation }: Props) {
         </View>
       </View>
 
+      {/* REPORT THIS BUSINESS */}
+      <View style={{ paddingHorizontal: 16, marginTop: 12, alignItems: "flex-end" }}>
+        <TouchableOpacity
+          onPress={onReport}
+          activeOpacity={0.9}
+          style={styles.reportPill}
+        >
+          <Ionicons name="flag-outline" size={16} color="#b91c1c" />
+          <Text style={styles.reportPillText}>Report this business</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* REVIEWS */}
       <Section title="Ratings & reviews">
         {avgRating != null ? (
@@ -453,8 +473,8 @@ export default function BusinessDetail({ route, navigation }: Props) {
             showsHorizontalScrollIndicator={false}
             contentOffset={{ x: viewerIndex * Dimensions.get("window").width, y: 0 }}
           >
-            {images.map((uri) => (
-              <Image key={uri} source={{ uri }} style={styles.viewerImage} resizeMode="contain" />
+            {images.map((uri, i) => (
+              <Image key={`${uri}-${i}`} source={{ uri }} style={styles.viewerImage} resizeMode="contain" />
             ))}
           </ScrollView>
           <TouchableOpacity onPress={closeViewer} style={styles.viewerClose}>
@@ -562,6 +582,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   ctaText: { color: "#fff", fontWeight: "900" },
+
+  reportPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#fee2e2",
+    backgroundColor: "#fef2f2",
+  },
+  reportPillText: { color: "#b91c1c", fontWeight: "900" },
 
   reviewCard: {
     marginTop: 10,

@@ -11,6 +11,7 @@ export type HomeStackParamList = {
   Home: undefined;
   BusinessDetail: { id: string };
   ReviewForm: { businessId: string; businessName: string };
+  ReportBusiness: { businessId: string; businessName?: string };
 };
 
 // (Optional) Dashboard stack types if you want to type screens there too
