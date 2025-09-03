@@ -23,4 +23,11 @@ export type DashboardStackParamList = {
   RequestVerification: { preselectBusinessId?: string } | undefined;
   EditBusiness: { businessId: string }; 
   ProfileSettings: undefined; 
+  SupportLegalHome: undefined;
+  Terms: undefined;
+  Privacy: undefined;
+  DataDeletion: undefined;
+  ChildSafety: undefined;
+  ContactUs: undefined;
+  ReportIssue: { prefillSubject?: string } | undefined;
 };

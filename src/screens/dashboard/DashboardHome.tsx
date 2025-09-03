@@ -69,6 +69,12 @@ export default function DashboardHome({ navigation }: any) {
             subtitle="Profile & preferences"
             onPress={() => navigation.navigate("ProfileSettings")}
           />
+          <DashCard
+            icon="shield-checkmark-outline"
+            title="Support & Legal"
+            subtitle="Terms, privacy, contact & more"
+            onPress={() => navigation.navigate("SupportLegalHome")}
+          />
         </View>
 
         <TouchableOpacity

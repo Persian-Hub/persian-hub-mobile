@@ -8,8 +8,14 @@ import AddBusiness from "../screens/dashboard/AddBusiness";
 import RequestVerificationList from "../screens/dashboard/RequestVerificationList";
 import RequestVerificationScreen from "../screens/RequestVerificationScreen";
 import EditBusiness from "../screens/dashboard/EditBusiness";
-import ProfileSettings from "../screens/dashboard/ProfileSettings"; // NEW
-
+import ProfileSettings from "../screens/dashboard/ProfileSettings"; 
+import SupportLegalHome from "../screens/dashboard/SupportLegalHome";
+import TermsScreen from "../screens/support/TermsScreen";
+import PrivacyPolicyScreen from "../screens/support/PrivacyPolicyScreen";
+import DataDeletionScreen from "../screens/support/DataDeletionScreen";
+import ChildSafetyScreen from "../screens/support/ChildSafetyScreen";
+import ContactUsScreen from "../screens/support/ContactUsScreen";
+import ReportIssueScreen from "../screens/support/ReportIssueScreen";
 const Stack = createNativeStackNavigator<DashboardStackParamList>();
 
 export default function DashboardStackNavigator() {
@@ -23,6 +29,14 @@ export default function DashboardStackNavigator() {
       
       <Stack.Screen name="RequestVerificationList" component={RequestVerificationList} />
       <Stack.Screen name="RequestVerification" component={RequestVerificationScreen} />
+
+      <Stack.Screen name="SupportLegalHome" component={SupportLegalHome} />
+      <Stack.Screen name="Terms" component={TermsScreen} />
+      <Stack.Screen name="Privacy" component={PrivacyPolicyScreen} />
+      <Stack.Screen name="DataDeletion" component={DataDeletionScreen} />
+      <Stack.Screen name="ChildSafety" component={ChildSafetyScreen} />
+      <Stack.Screen name="ContactUs" component={ContactUsScreen} />
+      <Stack.Screen name="ReportIssue" component={ReportIssueScreen} />
     </Stack.Navigator>
   );
 }
