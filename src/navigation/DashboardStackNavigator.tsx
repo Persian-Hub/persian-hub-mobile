@@ -18,6 +18,8 @@ import ContactUsScreen from "../screens/support/ContactUsScreen";
 import ReportIssueScreen from "../screens/support/ReportIssueScreen";
 import AdminHome from "../screens/admin/AdminHome"; // ⬅️ NEW
 import AdminStackNavigator from "./AdminStackNavigator";
+import ForgotPassword from "../screens/auth/ForgotPassword"; // <-- add
+import ResetPassword from "../screens/auth/ResetPassword";
 
 const Stack = createNativeStackNavigator<DashboardStackParamList>();
 
@@ -29,7 +31,16 @@ export default function DashboardStackNavigator() {
       <Stack.Screen name="AddBusiness" component={AddBusiness} />
       <Stack.Screen name="EditBusiness" component={EditBusiness} options={{ title: "Edit Business" }} />
       <Stack.Screen name="ProfileSettings" component={ProfileSettings} options={{ headerShown: true, title: "Profile & Settings"}} />
-      
+      <Stack.Screen
+        name="ForgotPassword"
+        component={ForgotPassword}
+        options={{ headerShown: true, title: "Forgot password" }}
+      />
+      <Stack.Screen
+        name="ResetPassword"
+        component={ResetPassword}
+        options={{ headerShown: true, title: "Reset Password" }}
+      />
       <Stack.Screen name="RequestVerificationList" component={RequestVerificationList} />
       <Stack.Screen name="RequestVerification" component={RequestVerificationScreen} />
 

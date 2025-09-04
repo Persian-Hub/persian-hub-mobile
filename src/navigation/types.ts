@@ -32,6 +32,9 @@ export type DashboardStackParamList = {
   ContactUs: undefined;
   ReportIssue: { prefillSubject?: string } | undefined;
   AdminStack: NavigatorScreenParams<AdminStackParamList>; // <— NESTED ADMIN
+  ForgotPassword: undefined;
+  ResetPassword: undefined; // opened from recovery deeplink
+
 
 };
 

@@ -64,13 +64,9 @@ export default function LoginScreen({ navigation }: P) {
           <View style={styles.group}>
             <View style={styles.rowBetween}>
               <Text style={styles.label}>Password</Text>
-               <TouchableOpacity
-                    onPress={() =>
-                        navigation.navigate("VerifyEmail", { email: email.trim() || undefined })
-                    }
-                    >
-                    <Text style={styles.linkSm}>Forgot Password?</Text>
-                </TouchableOpacity>
+               <TouchableOpacity onPress={() => navigation.navigate("VerifyEmail", { email: email.trim() || undefined })}>
+                <Text style={styles.linkSm}>Forgot Password?</Text>
+              </TouchableOpacity>
 
             </View>
             <View style={styles.passwordRow}>
