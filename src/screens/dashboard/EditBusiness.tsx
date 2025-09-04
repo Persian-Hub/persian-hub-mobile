@@ -28,8 +28,10 @@ type Props = NativeStackScreenProps<DashboardStackParamList, "EditBusiness">;
 
 type Category = { id: string; name: string; slug: string };
 type Subcategory = { id: string; name: string; slug: string; category_id: string };
+type EditBusinessParams = { businessId: string; adminOverride?: boolean };
 
 const DAY_KEYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
 type DayKey = (typeof DAY_KEYS)[number];
 
 type DayState = { open: boolean; start: string | null; end: string | null };
@@ -81,7 +83,7 @@ const TIME_OPTIONS = Array.from({ length: 24 * 4 }, (_, i) => {
 });
 
 export default function EditBusiness({ route, navigation }: Props) {
-  const { businessId } = route.params;
+  const { businessId, adminOverride } = route.params;
   const [initialLoading, setInitialLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -149,6 +151,13 @@ export default function EditBusiness({ route, navigation }: Props) {
       const user = auth.user;
       if (!user) throw new Error("Please sign in.");
 
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      const isAdmin = profile?.role === "admin";
+
       const { data, error } = await supabase
         .from("businesses")
         .select("id,owner_id,name,description,category_id,subcategory_id,address,latitude,longitude,phone,email,website,opening_hours,images,services,owner_keywords")
@@ -157,8 +166,10 @@ export default function EditBusiness({ route, navigation }: Props) {
 
       if (error) throw error;
       if (!data) throw new Error("Business not found.");
-      if (data.owner_id !== user.id) throw new Error("You do not have permission to edit this business.");
-
+      //if (data.owner_id !== user.id) throw new Error("You do not have permission to edit this business.");
+      if (!(data.owner_id === user.id || isAdmin || adminOverride)) {
+        throw new Error("You do not have permission to edit this business.");
+      }
       // hydrate form
       setName(data.name || "");
       setDescription(data.description || "");
@@ -182,7 +193,7 @@ export default function EditBusiness({ route, navigation }: Props) {
     } finally {
       setInitialLoading(false);
     }
-  }, [businessId, navigation]);
+  }, [businessId, adminOverride, navigation]);
 
   useEffect(() => {
     setInitialLoading(true);

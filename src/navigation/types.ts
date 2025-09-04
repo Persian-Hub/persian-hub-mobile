@@ -22,7 +22,7 @@ export type DashboardStackParamList = {
   AddBusiness: undefined;
   RequestVerificationList: undefined;
   RequestVerification: { preselectBusinessId?: string } | undefined;
-  EditBusiness: { businessId: string }; 
+  EditBusiness: { businessId: string; adminOverride?: boolean }; 
   ProfileSettings: undefined; 
   SupportLegalHome: undefined;
   Terms: undefined;
@@ -38,17 +38,16 @@ export type DashboardStackParamList = {
 
 export type AdminStackParamList = {
   // drill-down screens you can build next:
-  PendingBusinesses: undefined;
+  AdminHome: undefined;
+  AllBusinesses: undefined;
+  EditBusiness: { businessId: string; adminOverride?: boolean };  PendingBusinesses: undefined;
   PendingReviews: undefined;
   CategoryRequests: undefined;
   VerificationRequests: undefined;
   BusinessReports: undefined;
-
-  AllBusinesses: undefined;
   Users: undefined;
   AllReviews: undefined;
   Categories: undefined;
   Promotions: undefined;
-  AdminHome: undefined;
 
 };

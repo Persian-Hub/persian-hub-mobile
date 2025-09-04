@@ -3,9 +3,15 @@ import React from "react";
 import { ScrollView, StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { supabase } from "../../lib/supabase";
+import { AdminStackParamList } from "../../navigation/types";
+
+type Nav = NativeStackNavigationProp<AdminStackParamList>;
 
 export default function AdminHome() {
+  const navigation = useNavigation<Nav>();
   const [loading, setLoading] = React.useState(true);
   const [counts, setCounts] = React.useState({
     pendingBusinesses: 0,
@@ -64,29 +70,39 @@ export default function AdminHome() {
 
         <Text style={styles.sectionTitle}>Content Review</Text>
         <View style={styles.grid}>
-          <AdminCard icon="time-outline" title="Pending Businesses" count={counts.pendingBusinesses} />
-          <AdminCard icon="chatbubbles-outline" title="Pending Reviews" count={counts.pendingReviews} />
+          <AdminCard icon="time-outline" title="Pending Businesses" count={counts.pendingBusinesses}
+            onPress={() => navigation.navigate("PendingBusinesses")} />
+          <AdminCard icon="chatbubbles-outline" title="Pending Reviews" count={counts.pendingReviews}
+            onPress={() => navigation.navigate("PendingReviews")} />
         </View>
         <View style={styles.grid}>
-          <AdminCard icon="pricetags-outline" title="Category Requests" count={counts.categoryRequests} />
-          <AdminCard icon="ribbon-outline" title="Verification Requests" count={counts.verificationRequests} />
+          <AdminCard icon="pricetags-outline" title="Category Requests" count={counts.categoryRequests}
+            onPress={() => navigation.navigate("CategoryRequests")} />
+          <AdminCard icon="ribbon-outline" title="Verification Requests" count={counts.verificationRequests}
+            onPress={() => navigation.navigate("VerificationRequests")} />
         </View>
         <View style={styles.grid}>
-          <AdminCard icon="flag-outline" title="Business Reports" count={counts.businessReports} />
+          <AdminCard icon="flag-outline" title="Business Reports" count={counts.businessReports}
+            onPress={() => navigation.navigate("BusinessReports")} />
           <View style={{ flex: 1 }} />
         </View>
 
         <Text style={styles.sectionTitle}>Management</Text>
         <View style={styles.grid}>
-          <AdminCard icon="storefront-outline" title="All Businesses" count={counts.allBusinesses} />
-          <AdminCard icon="people-outline" title="Users" count={counts.users} />
+          <AdminCard icon="storefront-outline" title="All Businesses" count={counts.allBusinesses}
+            onPress={() => navigation.navigate("AllBusinesses")} />
+          <AdminCard icon="people-outline" title="Users" count={counts.users}
+            onPress={() => navigation.navigate("Users")} />
         </View>
         <View style={styles.grid}>
-          <AdminCard icon="chatbubbles-outline" title="All Reviews" count={counts.allReviews} />
-          <AdminCard icon="pricetags-outline" title="Categories" count={counts.categories} />
+          <AdminCard icon="chatbubbles-outline" title="All Reviews" count={counts.allReviews}
+            onPress={() => navigation.navigate("AllReviews")} />
+          <AdminCard icon="pricetags-outline" title="Categories" count={counts.categories}
+            onPress={() => navigation.navigate("Categories")} />
         </View>
         <View style={styles.grid}>
-          <AdminCard icon="sparkles-outline" title="Promotions" count={counts.promotions} />
+          <AdminCard icon="sparkles-outline" title="Promotions" count={counts.promotions}
+            onPress={() => navigation.navigate("Promotions")} />
           <View style={{ flex: 1 }} />
         </View>
 
