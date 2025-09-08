@@ -18,13 +18,22 @@
       "channel": "production",
       "android": {
         "buildType": "app-bundle"       // ✅ ensures AAB for Google Play
+      },
+      "ios": {
+        "simulator": false,             // build for real devices
+        "buildType": "release"          // ensures production release build
       }
     }
   },
   "submit": {
     "production": {
       "android": {
-        "track": "production"           // or "internal", "alpha", "beta"
+        "track": "production"
+      },
+      "ios": {
+        "ascAppId": null,               // optional: will prompt if not set
+      //"appleTeamId": null,            // optional: if you have multiple teams
+        "appName": "Persian Hub"        // optional: auto-detected if already exists
       }
     }
   }

@@ -12,15 +12,18 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.persianhub.app",
-      "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Allow location to show nearby Persian businesses.",
-        "NSPhotoLibraryUsageDescription": "Allow photo library access to upload business photos.",
-        "NSCameraUsageDescription": "Allow camera access to add photos of your business."
-      }
-    },
+      "ios": {
+        "bundleIdentifier": "au.com.persianhub.app",
+        "buildNumber": "1",
+        "supportsTablet": false,
+        "infoPlist": {
+          "NSPhotoLibraryUsageDescription": "We use your photo library so you can upload business photos.",
+          "NSPhotoLibraryAddUsageDescription": "We may save images you select during uploads.",
+          "NSCameraUsageDescription": "We use the camera so you can take photos of your business.",
+          "NSLocationWhenInUseUsageDescription": "We use your location to help you find nearby Persian businesses.",
+          "NSAppTransportSecurity": { "NSAllowsArbitraryLoads": false }  // all your services are HTTPS
+        }
+      },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
