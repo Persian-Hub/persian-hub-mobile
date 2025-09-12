@@ -10,15 +10,13 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "jsEngine": "hermes",
-
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-
     "ios": {
-      "bundleIdentifier": "au.com.persianhub.app",
+      "bundleIdentifier": "com.persianhub.app",
       "buildNumber": "1",
       "supportsTablet": false,
       "infoPlist": {
@@ -31,7 +29,6 @@
         }
       }
     },
-
     "android": {
       "package": "com.persianhub.app",
       "versionCode": 1,
@@ -46,22 +43,23 @@
         "backgroundColor": "#ffffff"
       }
     },
-
     "web": {
       "favicon": "./assets/favicon.png"
     },
-
     "plugins": [
       "expo-web-browser",
       [
         "expo-build-properties",
         {
-          "android": { "enableProguardInReleaseBuilds": true },
-          "ios": { "useFrameworks": "static" }
+          "android": {
+            "enableProguardInReleaseBuilds": true
+          },
+          "ios": {
+            "useFrameworks": "static"
+          }
         }
       ]
     ],
-
     "updates": {
       "url": "https://u.expo.dev/832feafd-fb4a-43ae-84f1-1537588fadaf"
     }
