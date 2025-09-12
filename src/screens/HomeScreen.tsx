@@ -1,3 +1,4 @@
+// src/screens/HomeScreen.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
@@ -20,7 +21,6 @@ import BusinessCard from "../components/BusinessCard";
 import { haversineKm } from "../utils/geo";
 import { isOpenNow, nextOpenToday } from "../utils/hours";
 
-// Navigation (this screen is inside HomeStack)
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { HomeStackParamList } from "../navigation/types";
 
@@ -46,20 +46,19 @@ export default function HomeScreen({ navigation }: Props) {
       const cur = await Location.getCurrentPositionAsync({});
       setPos({ lat: cur.coords.latitude, lon: cur.coords.longitude });
     } catch {
-      // ignore location errors, app still works
+      // ignore
     }
   }, []);
 
   const loadCategories = useCallback(async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("categories")
       .select("id,name,slug")
       .order("name");
-    if (!error && data) setCategories(data as Category[]);
+    if (data) setCategories(data as Category[]);
   }, []);
 
   const loadBusinesses = useCallback(async () => {
-    // Try RPC nearby if you implemented it
     if (pos) {
       try {
         const { data, error } = await supabase.rpc("nearby_businesses", {
@@ -81,7 +80,6 @@ export default function HomeScreen({ navigation }: Props) {
       }
     }
 
-    // Fallback: fetch approved and compute distance client-side
     const { data } = await supabase
       .from("businesses")
       .select(
@@ -141,7 +139,6 @@ export default function HomeScreen({ navigation }: Props) {
     return rows;
   }, [businesses, activeCat, q]);
 
-  // Card actions
   const openDirections = (b: Business) => {
     const url =
       b.latitude != null && b.longitude != null
@@ -161,7 +158,7 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   const showDetails = (b: Business) => {
-    navigation.navigate("BusinessDetail", { id: b.id });
+    navigation.navigate("BusinessDetail", { id: b.id }); // ✅ id
   };
 
   return (
@@ -169,7 +166,6 @@ export default function HomeScreen({ navigation }: Props) {
       <View style={styles.container}>
         <Text style={styles.h1}>Discover near you</Text>
 
-        {/* Search */}
         <View style={styles.searchBox}>
           <TextInput
             placeholder="Search business or address"
@@ -182,7 +178,6 @@ export default function HomeScreen({ navigation }: Props) {
           />
         </View>
 
-        {/* Category chips */}
         <FlatList
           data={[{ id: "all", name: "All", slug: "all" } as any, ...categories]}
           horizontal
@@ -206,7 +201,6 @@ export default function HomeScreen({ navigation }: Props) {
           style={{ marginBottom: 8 }}
         />
 
-        {/* List */}
         {loading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator />
@@ -238,7 +232,6 @@ export default function HomeScreen({ navigation }: Props) {
 
               const services = (item as any).services as string[] | null;
 
-              // Ratings placeholder — wire real AVG/COUNT later from reviews
               const ratingAvg: number | null = null;
               const ratingCount: number | null = null;
 
@@ -303,12 +296,9 @@ const styles = StyleSheet.create({
   chipTextActive: { color: "#fff" },
 
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
-  empty: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#111" },
-  emptySub: { fontSize: 14, color: "#555", marginTop: 6, textAlign: "center" },
+  empty: { alignItems: "center", marginTop: 24 },
+  emptyTitle: { fontWeight: "800", color: "#111827", fontSize: 16 },
+  emptySub: { color: "#6b7280", marginTop: 4 },
+
+  card: {},
 });

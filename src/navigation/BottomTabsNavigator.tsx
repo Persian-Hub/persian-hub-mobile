@@ -1,14 +1,12 @@
+// src/navigation/BottomTabsNavigator.tsx
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomTabParamList } from "./types";
 import HomeStackNavigator from "./HomeStackNavigator";
+import DashboardStackNavigator from "./DashboardStackNavigator"; // <-- make sure this file exists
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
-
-function Placeholder() {
-  return null;
-}
 
 export default function BottomTabsNavigator() {
   return (
@@ -26,19 +24,28 @@ export default function BottomTabsNavigator() {
         },
         tabBarIcon: ({ color, size }) => {
           let name: keyof typeof Ionicons.glyphMap = "home";
+
           if (route.name === "HomeTab") name = "home";
-          if (route.name === "Profile") name = "person";
+          if (route.name === "DashboardTab") name = "grid";
+
           return <Ionicons name={name} size={size} color={color} />;
         },
       })}
     >
-      {/* Home tab hosts its own stack, so tabs stay visible on detail */}
       <Tab.Screen
         name="HomeTab"
         component={HomeStackNavigator}
         options={{ title: "Home" }}
       />
-      <Tab.Screen name="Profile" component={Placeholder} />
+
+      {/* This tab shows Dashboard flow. 
+          Inside DashboardStackNavigator, if user is not logged in,
+          redirect to your WelcomeAuth/Login; if logged in, show dashboard screens. */}
+      <Tab.Screen
+        name="DashboardTab"
+        component={DashboardStackNavigator}
+        options={{ title: "Dashboard" }}
+      />
     </Tab.Navigator>
   );
 }
